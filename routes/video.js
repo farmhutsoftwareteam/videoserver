@@ -29,9 +29,10 @@ router.post('/create', upload.single('video'), (req, res) => {
         return res.status(400).send('No video file uploaded.');
     }
 
-    const filePath = videoFile.path;
-    const thumbnailPath = `public/videos/thumbnails/${path.basename(filePath, path.extname(filePath))}.png`;
-
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const filePath = `${baseUrl}/videos/uploads/${videoFile.filename}`;
+    const thumbnailFilename = `${path.basename(videoFile.filename, path.extname(videoFile.filename))}.png`;
+    const thumbnailPath = `${baseUrl}/videos/thumbnails/${thumbnailFilename}`;
     // Generate thumbnail using ffmpeg
     ffmpeg(filePath)
         .screenshots({
