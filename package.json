@@ -1,0 +1,27 @@
+{
+  "name": "videoserver",
+  "version": "1.0.0",
+  "description": "serve fast videos on mobile apps",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "swagger": "node swagger.js",
+    "dev": "nodemon index.js && npm run swagger"
+  },
+  "author": "munyaradzi makosa",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.1",
+    "fluent-ffmpeg": "^2.1.2",
+    "mongoose": "^8.2.3",
+    "multer": "^1.4.5-lts.1",
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-express": "^5.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
