@@ -30,7 +30,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 app.get('/', (req, res) => {
-    res.send('Video server is up and running!');
+    res.send('Video server is up and running on pipelinez!');
 });
 
 app.listen(PORT, () => {
