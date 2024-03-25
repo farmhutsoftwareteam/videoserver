@@ -9,6 +9,7 @@ const swaggerDocument = require('./swagger-output.json');
 
 
 
+app.use(cors()); 
 
 app.use(express.json());
 

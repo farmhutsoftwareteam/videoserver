@@ -103,11 +103,42 @@ router.post('/create', upload.single('video'), (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const video = await Video.findById(req.params.id);
-        res.json(video);
+        if (!video) {
+            return res.status(404).send('Video not found');
+        }
+
+        // Find related videos
+        const relatedVideos = await Video.aggregate([
+            {
+                $match: {
+                    _id: { $ne: video._id }, // Exclude the current video
+                    tags: { $in: video.tags } // Find videos with any matching tag
+                }
+            },
+            {
+                $addFields: {
+                    commonTags: {
+                        $size: {
+                            $setIntersection: ["$tags", video.tags]
+                        }
+                    }
+                }
+            },
+            {
+                $match: {
+                    commonTags: { $gte: 3 } // Ensure at least 3 tags are common
+                }
+            },
+            { $limit: 10 } // Limit the number of related videos returned
+        ]);
+
+        res.json({ video, relatedVideos });
     } catch (error) {
-        res.status(404).send('Video not found');
+        console.error('Error fetching video and related videos:', error);
+        res.status(500).send('Error fetching videos');
     }
 });
+
 
 // PUT route to update video details
 router.put('/:id', async (req, res) => {
@@ -134,6 +165,24 @@ router.get('/', async (req, res) => {
         const videos = await Video.find({});
         res.json(videos);
     } catch (error) {
+        res.status(500).send('Error fetching videos');
+    }
+});
+
+
+// GET route to fetch videos by category
+router.get('/category/:category', async (req, res) => {
+    try {
+        const { category } = req.params;
+        const videosInCategory = await Video.find({ category: category, status: 'active' });
+
+        if (videosInCategory.length === 0) {
+            return res.status(404).send('No videos found in this category');
+        }
+
+        res.json(videosInCategory);
+    } catch (error) {
+        console.error('Error fetching videos by category:', error);
         res.status(500).send('Error fetching videos');
     }
 });
