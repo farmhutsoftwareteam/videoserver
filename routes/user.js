@@ -2,47 +2,10 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/userModel');  // Adjust the path to where your User model is located
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-// POST route to create a new user
-/**
- * @swagger
- * /videos/create:
- *   post:
- *     summary: Uploads a video file.
- *     description: This route allows for uploading a video to the server.
- *     consumes:
- *       - multipart/form-data
- *     parameters:
- *       - in: formData
- *         name: video
- *         type: file
- *         description: The file to upload.
- *       - in: formData
- *         name: title
- *         type: string
- *         description: The title of the video.
- *       - in: formData
- *         name: description
- *         type: string
- *         description: The description of the video.
- *     responses:
- *       200:
- *         description: Successfully uploaded
- *         schema:
- *           type: object
- *           properties:
- *             message:
- *               type: string
- *             video:
- *               type: object
- *               properties:
- *                 title:
- *                   type: string
- *                 description:
- *                   type: string
- *                 filePath:
- *                   type: string
- */
+
 router.post('/', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -55,6 +18,26 @@ router.post('/', async (req, res) => {
         res.status(201).json({ message: 'User created successfully', userId: user._id });
     } catch (error) {
         res.status(500).json({ message: 'Error creating user', error: error.message });
+    }
+});
+
+router.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: 'User does not exist' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Wrong password' });
+        }
+
+        const token = jwt.sign({ id: user._id }, 'your_secret_key', { expiresIn: '1h' });
+        res.json({ token });
+    } catch (error) {
+        res.status(500).send('Server error');
     }
 });
 
