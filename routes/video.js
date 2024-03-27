@@ -9,6 +9,11 @@ const Video = require('../models/videoModel');  // Adjust the path as per your f
 const uploadPath = path.join(__dirname, '../public/videos/uploads');
 const thumbnailDir = path.join(__dirname, '../public/videos/thumbnails');
 
+const constructVideoUrl = (req, filePath) => {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    return filePath.startsWith('public/') ? `${baseUrl}/${filePath.slice(7)}` : `${baseUrl}/${filePath}`;
+  };
+
 // Ensure the directories exist
 fs.mkdirSync(uploadPath, { recursive: true });
 fs.mkdirSync(thumbnailDir, { recursive: true });
@@ -102,24 +107,30 @@ router.post('/create', upload.single('video'), (req, res) => {
 // GET route to fetch a specific video by ID
 router.get('/:id', async (req, res) => {
     try {
-        const video = await Video.findById(req.params.id);
-        if (!video) {
+        const videoData = await Video.findById(req.params.id);
+        if (!videoData) {
             return res.status(404).send('Video not found');
         }
+        
+        const video = {
+            ...videoData.toObject(),
+            filePath: constructVideoUrl(req, videoData.filePath),
+            thumbnail: constructVideoUrl(req, videoData.thumbnail)
+        };
 
         // Find related videos
-        const relatedVideos = await Video.aggregate([
+        let relatedVideos = await Video.aggregate([
             {
                 $match: {
-                    _id: { $ne: video._id }, // Exclude the current video
-                    tags: { $in: video.tags } // Find videos with any matching tag
+                    _id: { $ne: videoData._id }, // Exclude the current video
+                    tags: { $in: videoData.tags } // Find videos with any matching tag
                 }
             },
             {
                 $addFields: {
                     commonTags: {
                         $size: {
-                            $setIntersection: ["$tags", video.tags]
+                            $setIntersection: ["$tags", videoData.tags]
                         }
                     }
                 }
@@ -132,13 +143,19 @@ router.get('/:id', async (req, res) => {
             { $limit: 10 } // Limit the number of related videos returned
         ]);
 
+        // Transform related videos to include constructed URLs
+        relatedVideos = relatedVideos.map(rv => ({
+            ...rv,
+            filePath: constructVideoUrl(req, rv.filePath),
+            thumbnail: constructVideoUrl(req, rv.thumbnail)
+        }));
+
         res.json({ video, relatedVideos });
     } catch (error) {
         console.error('Error fetching video and related videos:', error);
         res.status(500).send('Error fetching videos');
     }
 });
-
 
 // PUT route to update video details
 router.put('/:id', async (req, res) => {
@@ -162,7 +179,13 @@ router.delete('/:id', async (req, res) => {
 // GET route to fetch all videos
 router.get('/', async (req, res) => {
     try {
-        const videos = await Video.find({});
+        let videos = await Video.find({});
+        // Construct full URLs for each video
+        videos = videos.map(video => ({
+          ...video.toObject(),
+          filePath: constructVideoUrl(req, video.filePath),
+          thumbnail: constructVideoUrl(req, video.thumbnail)
+        }));
         res.json(videos);
     } catch (error) {
         res.status(500).send('Error fetching videos');

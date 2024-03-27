@@ -6,6 +6,7 @@ const videoRoutes = require('./routes/video');
 const userRoutes = require('./routes/user'); // Adjust the path to your user routes file
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger-output.json');
+const cors = require('cors')
 
 
 
