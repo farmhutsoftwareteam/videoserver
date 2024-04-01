@@ -1,4 +1,4 @@
-# Use the official Node.js 14 image as a parent image
+
 FROM node:20
 
 # Install FFmpeg
