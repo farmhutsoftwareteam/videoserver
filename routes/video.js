@@ -9,10 +9,22 @@ const Video = require('../models/videoModel');  // Adjust the path as per your f
 const uploadPath = path.join(__dirname, '../public/videos/uploads');
 const thumbnailDir = path.join(__dirname, '../public/videos/thumbnails');
 
-const constructVideoUrl = (req, filePath) => {
+
+
+
+const constructVideoUrl = (req, filePath, type) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    return filePath.startsWith('public/') ? `${baseUrl}/${filePath.slice(7)}` : `${baseUrl}/${filePath}`;
-  };
+    let basePath = '/videos';
+    if (type === 'video') {
+        basePath += '/uploads';
+    } else if (type === 'thumbnail') {
+        basePath += '/thumbnails';
+    }
+    // Ensure there's no slash between the base URL and the file path
+    return `${baseUrl}${basePath}/${path.basename(filePath)}`;
+};
+
+
 
 // Ensure the directories exist
 fs.mkdirSync(uploadPath, { recursive: true });
@@ -32,7 +44,7 @@ const upload = multer({
 });
 
 
-// POST route for video upload
+// POST route for video uploadd
 router.post('/create', upload.single('video'), (req, res) => {
     const videoFile = req.file;
 
@@ -147,7 +159,7 @@ router.get('/:id', async (req, res) => {
         relatedVideos = relatedVideos.map(rv => ({
             ...rv,
             filePath: constructVideoUrl(req, rv.filePath),
-            thumbnail: constructVideoUrl(req, rv.thumbnail)
+            thumbnail: constructVideoUrl(req, rv.thumbnail , 'thumbnail')
         }));
 
         res.json({ video, relatedVideos });
@@ -183,8 +195,8 @@ router.get('/', async (req, res) => {
         // Construct full URLs for each video
         videos = videos.map(video => ({
           ...video.toObject(),
-          filePath: constructVideoUrl(req, video.filePath),
-          thumbnail: constructVideoUrl(req, video.thumbnail)
+          filePath: constructVideoUrl(req, video.filePath , 'video'),
+          thumbnail: constructVideoUrl(req, video.thumbnail ,'thumbnail')
         }));
         res.json(videos);
     } catch (error) {
