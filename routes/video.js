@@ -126,8 +126,8 @@ router.get('/:id', async (req, res) => {
         
         const video = {
             ...videoData.toObject(),
-            filePath: constructVideoUrl(req, videoData.filePath),
-            thumbnail: constructVideoUrl(req, videoData.thumbnail)
+            filePath: constructVideoUrl(req, videoData.filePath ,'video'),
+            thumbnail: constructVideoUrl(req, videoData.thumbnail ,'thumbnail')
         };
 
         // Find related videos
@@ -158,7 +158,7 @@ router.get('/:id', async (req, res) => {
         // Transform related videos to include constructed URLs
         relatedVideos = relatedVideos.map(rv => ({
             ...rv,
-            filePath: constructVideoUrl(req, rv.filePath),
+            filePath: constructVideoUrl(req, rv.filePath, 'video'),
             thumbnail: constructVideoUrl(req, rv.thumbnail , 'thumbnail')
         }));
 
