@@ -1,12 +1,13 @@
+require("dotenv").config();
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
+
 const { BlobServiceClient, ContainerClient } = require("@azure/storage-blob");
 
-const { DefaultAzureCredential } = require('@azure/identity');
+
 
 
 
@@ -19,11 +20,12 @@ const containerName = 'quickstart';
 
 
 
-const blobServiceClient = new BlobServiceClient(
-    `https://${accountName}.blob.core.windows.net`,
-    new DefaultAzureCredential()
-  )
+const AZURE_STORAGE_CONNECTION_STRING = 
+process.env.AZURE_STORAGE_CONNECTION_STRING
 
+const blobServiceClient = BlobServiceClient.fromConnectionString(
+    AZURE_STORAGE_CONNECTION_STRING
+  );
 
 
 

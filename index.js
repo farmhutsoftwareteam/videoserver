@@ -30,14 +30,14 @@ mongoose.connect(dbURI)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('Could not connect to MongoDB:', err));
 
-  //CHECK AZURE BLOB CONNECTION
-  if(!accountName){
-    console.log('Azure storage account name not found');
-  }
-const blobServiceClient = new BlobServiceClient(
-  `https://${accountName}.blob.core.windows.net`,
-  new DefaultAzureCredential()
-)
+  const AZURE_STORAGE_CONNECTION_STRING = 
+  process.env.AZURE_STORAGE_CONNECTION_STRING
+
+
+  // Create the BlobServiceClient object with connection string
+const blobServiceClient = BlobServiceClient.fromConnectionString(
+  AZURE_STORAGE_CONNECTION_STRING
+);
 
 // Assuming BlobServiceClient is already initialized as blobServiceClient
 
