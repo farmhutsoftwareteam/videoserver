@@ -6,7 +6,7 @@ const videoSchema = new mongoose.Schema({
   filePath: { type: String, required: true },  // Adapt based on storage strategy
   thumbnail: { type: String, required: true },
   uploadDate: { type: Date, default: Date.now },
-  duration: { type: Number, required: true },
+  duration: { type: Number, required: false },
   tags: [String],
   views: { type: Number, default: 0 },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

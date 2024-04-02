@@ -12,6 +12,9 @@
   "author": "munyaradzi makosa",
   "license": "ISC",
   "dependencies": {
+    "@azure/arm-storage": "^18.2.0",
+    "@azure/identity": "^4.0.1",
+    "@azure/storage-blob": "^12.17.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

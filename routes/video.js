@@ -3,11 +3,27 @@ const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
+const { BlobServiceClient, ContainerClient } = require("@azure/storage-blob");
+
+const { DefaultAzureCredential } = require('@azure/identity');
+
+
+
 
 const Video = require('../models/videoModel');  // Adjust the path as per your file structure
 
 const uploadPath = path.join(__dirname, '../public/videos/uploads');
 const thumbnailDir = path.join(__dirname, '../public/videos/thumbnails');
+const containerName = 'quickstart';
+
+
+
+const blobServiceClient = new BlobServiceClient(
+    `https://${accountName}.blob.core.windows.net`,
+    new DefaultAzureCredential()
+  )
+
 
 
 
@@ -31,10 +47,16 @@ fs.mkdirSync(uploadPath, { recursive: true });
 fs.mkdirSync(thumbnailDir, { recursive: true });
 
 // Multer configuration for file uploads
+// Multer configuration for file uploads
 const upload = multer({
     storage: multer.diskStorage({
         destination: (req, file, cb) => {
-            cb(null, uploadPath);
+            // Check if the file is a video or a thumbnail
+            if (file.fieldname === 'thumbnail') {
+                cb(null, thumbnailDir); // Save thumbnails in the thumbnails folder
+            } else {
+                cb(null, uploadPath); // Save videos in the uploads folder
+            }
         },
         filename: (req, file, cb) => {
             const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -44,56 +66,68 @@ const upload = multer({
 });
 
 
-// POST route for video uploadd
-// POST route for video upload with user-provided thumbnail
-router.post('/create', upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), async (req, res) => {
-    const videoFile = req.files['video'][0];
-    const thumbnailFile = req.files['thumbnail'][0];
-  
-    // Check if the video and thumbnail files were received
-    if (!videoFile || !thumbnailFile) {
-      return res.status(400).send('Video and thumbnail files are required.');
+// Route to upload a video and its thumbnail, along with other metadata
+router.post('/upload-video', upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), async (req, res) => {
+    const files = req.files;
+    if (!files.video || !files.thumbnail) {
+      return res.status(400).send('Both video and thumbnail files are required.');
     }
   
-    // Extract video metadata from the request body
+    const videoFile = files.video[0];
+    const thumbnailFile = files.thumbnail[0];
+  
+    // Extract additional fields from the request body
     const { title, description, userId, tags, access, monetization, category } = req.body;
   
-    // Define the local file paths on the server's filesystem
-    const videoFilePath = path.join(uploadPath, videoFile.filename);
-    const thumbnailFilePath = path.join(thumbnailDir, thumbnailFile.filename);
-  
     try {
+      // Upload video and get its URL
+      const videoUrl = await uploadBlob(videoFile);
+  
+      // Upload thumbnail and get its URL
+      const thumbnailUrl = await uploadBlob(thumbnailFile);
+  
       // Create a new video document in the database
       const newVideo = new Video({
         title,
         description,
-        filePath: videoFile.filename,
-        thumbnail: thumbnailFile.filename,
-        uploadDate: new Date(),
-        duration: 0, // Set based on actual video duration if needed
         userId,
         tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-        access: access || 'public',
+        access,
         monetization,
-        status: 'active',
-        category
+        category,
+        filePath: videoUrl, // Use the URL from the uploaded video
+        thumbnail: thumbnailUrl, // Use the URL from the uploaded thumbnail
+        uploadDate: new Date(),
+        // Initialize other fields as needed, e.g., views, status, etc.
+        views: 0, // Default value if not provided
+        status: 'active', // Default value if not provided
+        // Add other fields as necessary
       });
+  
       await newVideo.save();
   
-      // Respond with success message and video document
+      // Optionally, delete the local files after upload
+      fs.unlinkSync(videoFile.path);
+      fs.unlinkSync(thumbnailFile.path);
+  
       res.json({
         message: 'Video uploaded successfully',
-        video: {
-          ...newVideo.toObject(),
-          videoUrl: `${req.protocol}://${req.get('host')}/videos/uploads/${newVideo.filePath}`,
-          thumbnailUrl: `${req.protocol}://${req.get('host')}/videos/thumbnails/${newVideo.thumbnail}`
-        }
+        video: newVideo
       });
     } catch (error) {
-      console.error('Error saving video:', error);
-      res.status(500).send('Error processing video');
+      console.error(error);
+      res.status(500).send('Error uploading video and metadata.');
     }
-  });
+});
+
+  // Helper function to upload a file to Azure Blob Storage and return the URL
+async function uploadBlob(file) {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
+    console.log(`Uploading ${file.originalname} to container ${containerName}...`);
+    await blockBlobClient.uploadFile(file.path);
+    return blockBlobClient.url; // Return the URL of the uploaded blob
+  }
   
 
 
