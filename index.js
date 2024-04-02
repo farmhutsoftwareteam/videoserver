@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const videoRoutes = require('./routes/video');
 const userRoutes = require('./routes/user'); // Adjust the path to your user routes file
 const swaggerUi = require('swagger-ui-express');

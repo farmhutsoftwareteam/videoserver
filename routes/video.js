@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const ffmpeg = require('fluent-ffmpeg');
+
 const Video = require('../models/videoModel');  // Adjust the path as per your file structure
 
 const uploadPath = path.join(__dirname, '../public/videos/uploads');
