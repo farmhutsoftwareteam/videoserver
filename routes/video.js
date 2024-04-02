@@ -207,15 +207,10 @@ router.delete('/:id', async (req, res) => {
 // GET route to fetch all videos
 router.get('/', async (req, res) => {
     try {
-        let videos = await Video.find({});
-        // Construct full URLs for each video
-        videos = videos.map(video => ({
-          ...video.toObject(),
-          filePath: constructVideoUrl(req, video.filePath , 'video'),
-          thumbnail: constructVideoUrl(req, video.thumbnail ,'thumbnail')
-        }));
+        const videos = await Video.find({});
         res.json(videos);
     } catch (error) {
+        console.error('Error fetching videos:', error);
         res.status(500).send('Error fetching videos');
     }
 });
