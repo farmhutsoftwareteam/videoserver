@@ -135,56 +135,16 @@ async function uploadBlob(file) {
 // GET route to fetch a specific video by ID
 router.get('/:id', async (req, res) => {
     try {
-        const videoData = await Video.findById(req.params.id);
-        if (!videoData) {
+        const video = await Video.findById(req.params.id);
+        if (!video) {
             return res.status(404).send('Video not found');
         }
-        
-        const video = {
-            ...videoData.toObject(),
-            filePath: constructVideoUrl(req, videoData.filePath ,'video'),
-            thumbnail: constructVideoUrl(req, videoData.thumbnail ,'thumbnail')
-        };
-
-        // Find related videos
-        let relatedVideos = await Video.aggregate([
-            {
-                $match: {
-                    _id: { $ne: videoData._id }, // Exclude the current video
-                    tags: { $in: videoData.tags } // Find videos with any matching tag
-                }
-            },
-            {
-                $addFields: {
-                    commonTags: {
-                        $size: {
-                            $setIntersection: ["$tags", videoData.tags]
-                        }
-                    }
-                }
-            },
-            {
-                $match: {
-                    commonTags: { $gte: 3 } // Ensure at least 3 tags are common
-                }
-            },
-            { $limit: 10 } // Limit the number of related videos returned
-        ]);
-
-        // Transform related videos to include constructed URLs
-        relatedVideos = relatedVideos.map(rv => ({
-            ...rv,
-            filePath: constructVideoUrl(req, rv.filePath, 'video'),
-            thumbnail: constructVideoUrl(req, rv.thumbnail , 'thumbnail')
-        }));
-
-        res.json({ video, relatedVideos });
+        res.json(video);
     } catch (error) {
-        console.error('Error fetching video and related videos:', error);
-        res.status(500).send('Error fetching videos');
+        console.error('Error fetching video:', error);
+        res.status(500).send('Error fetching video');
     }
 });
-
 // PUT route to update video details
 router.put('/:id', async (req, res) => {
     try {
