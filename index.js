@@ -23,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB connection URL
-const dbURI = 'mongodb+srv://raysuncapital:ZGJKTn45yyqH6X1y@cluster0.0jein5m.mongodb.net/videoserver'; // Update this with your actual MongoDB URI
+const dbURI = process.env.MONGO_DB_URI;
 
 // Connect to MongoDB
 mongoose.connect(dbURI)
