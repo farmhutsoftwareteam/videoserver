@@ -45,74 +45,56 @@ const upload = multer({
 
 
 // POST route for video uploadd
-router.post('/create', upload.single('video'), (req, res) => {
-    const videoFile = req.file;
-
-    // Check if the video file was received
-    if (!videoFile) {
-        return res.status(400).send('No video file uploaded.');
+// POST route for video upload with user-provided thumbnail
+router.post('/create', upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), async (req, res) => {
+    const videoFile = req.files['video'][0];
+    const thumbnailFile = req.files['thumbnail'][0];
+  
+    // Check if the video and thumbnail files were received
+    if (!videoFile || !thumbnailFile) {
+      return res.status(400).send('Video and thumbnail files are required.');
     }
-
+  
     // Extract video metadata from the request body
     const { title, description, userId, tags, access, monetization, category } = req.body;
-
+  
     // Define the local file paths on the server's filesystem
     const videoFilePath = path.join(uploadPath, videoFile.filename);
-    const thumbnailFilename = path.basename(videoFile.filename, path.extname(videoFile.filename)) + '.png';
-    const thumbnailFilePath = path.join(thumbnailDir, thumbnailFilename);
-
-    // Generate thumbnail using ffmpeg
-    ffmpeg(videoFilePath)
-        .screenshots({
-            timestamps: ['00:00:02'],
-            filename: thumbnailFilename,
-            folder: thumbnailDir,
-            size: '320x240'
-        })
-        .on('end', async () => {
-            try {
-                // Create a new video document in the database
-                const newVideo = new Video({
-                    title,
-                    description,
-                    filePath: videoFile.filename,  // Saving the filename only, to construct URLs dynamically later
-                    thumbnail: thumbnailFilename,  // Saving the filename only, to construct URLs dynamically later
-                    uploadDate: new Date(),
-                    duration: 0,  // This should be set based on the actual video duration after processing
-                    userId,
-                    tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
-                    access: access || 'public',  // Default to 'public' if not specified
-                    monetization,
-                    status: 'active',
-                    category
-                });
-            await newVideo.save();
-
-            // Construct the URLs for the video and thumbnail
-            const baseUrl = `${req.protocol}://${req.get('host')}`;
-                const videoUrl = `${baseUrl}/videos/uploads/${newVideo.filePath}`;
-                const thumbnailUrl = `${baseUrl}/videos/thumbnails/${newVideo.thumbnail}`;
-
-
-            // Respond with success message and video document
-            res.json({
-                message: 'Video uploaded and processed successfully',
-                video: {
-                    ...newVideo.toObject(), // Spread the video document data
-                    videoUrl,
-                    thumbnailUrl
-                }
-            });
-        } catch (error) {
-            console.error('Error saving video:', error);
-            res.status(500).send('Error processing video');
+    const thumbnailFilePath = path.join(thumbnailDir, thumbnailFile.filename);
+  
+    try {
+      // Create a new video document in the database
+      const newVideo = new Video({
+        title,
+        description,
+        filePath: videoFile.filename,
+        thumbnail: thumbnailFile.filename,
+        uploadDate: new Date(),
+        duration: 0, // Set based on actual video duration if needed
+        userId,
+        tags: tags ? tags.split(',').map(tag => tag.trim()) : [],
+        access: access || 'public',
+        monetization,
+        status: 'active',
+        category
+      });
+      await newVideo.save();
+  
+      // Respond with success message and video document
+      res.json({
+        message: 'Video uploaded successfully',
+        video: {
+          ...newVideo.toObject(),
+          videoUrl: `${req.protocol}://${req.get('host')}/videos/uploads/${newVideo.filePath}`,
+          thumbnailUrl: `${req.protocol}://${req.get('host')}/videos/thumbnails/${newVideo.thumbnail}`
         }
-    })
-    .on('error', (err) => {
-        console.error('Error generating thumbnail:', err);
-        res.status(500).send('Error processing video');
-    });
-});
+      });
+    } catch (error) {
+      console.error('Error saving video:', error);
+      res.status(500).send('Error processing video');
+    }
+  });
+  
 
 
 
