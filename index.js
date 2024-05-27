@@ -10,7 +10,7 @@ const swaggerDocument = require('./swagger-output.json');
 const cors = require('cors')
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
 const { BlobServiceClient } = require("@azure/storage-blob");
-
+const paynow = require('./routes/payment');
 const { DefaultAzureCredential } = require('@azure/identity');
 
 
@@ -66,6 +66,9 @@ app.use(express.static('public'));
 app.use('/api/videos', videoRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use('/api/payments', paynow); // Add the payment routes
+
+
 
 
 
