@@ -136,17 +136,28 @@ async function uploadBlob(file) {
 }
 
 // Route to upload episode information and video file
-router.post('/upload-episode', upload.single('video'), async (req, res) => {
-  const { title, description, duration, episodenumber, seasonnumber, show, thumbnail } = req.body;
-  const videoFile = req.file;
+router.post('/upload-episode', upload.fields([
+  { name: "video", maxCount: 1 },
+  { name: "thumbnail", maxCount: 1 },
+]), async (req, res) => {
+  const { title, description, duration, episodenumber, seasonnumber, show } = req.body;
+  const files = req.files;
 
-  if (!title || !videoFile) {
-    return res.status(400).send('Title and video file are required.');
+  if (!title || !files.video || !files.thumbnail) {
+    return res.status(400).send('Title, video file, and thumbnail are required.');
   }
+
+  const videoFile = files.video[0];
+  const thumbnailFile = files.thumbnail[0];
 
   try {
     // Upload video to Azure Blob Storage and get its URL
     const videoUrl = await uploadBlob(videoFile);
+    console.log('Video uploaded successfully, URL:', videoUrl);
+
+    // Upload thumbnail to Azure Blob Storage and get its URL
+    const thumbnailUrl = await uploadBlob(thumbnailFile);
+    console.log('Thumbnail uploaded successfully, URL:', thumbnailUrl);
 
     // Insert episode information into Supabase
     const { data, error } = await supabase
@@ -159,7 +170,7 @@ router.post('/upload-episode', upload.single('video'), async (req, res) => {
           episodenumber,
           seasonnumber,
           show,
-          thumbnail,
+          thumbnail: thumbnailUrl,
           video_url: videoUrl,
           created_at: new Date().toISOString(),
         },
@@ -169,8 +180,9 @@ router.post('/upload-episode', upload.single('video'), async (req, res) => {
       throw error;
     }
 
-    // Optionally, delete the local video file after upload
+    // Optionally, delete the local video and thumbnail files after upload
     fs.unlinkSync(videoFile.path);
+    fs.unlinkSync(thumbnailFile.path);
 
     res.status(201).json({ message: 'Episode uploaded successfully', episode: data });
   } catch (error) {
