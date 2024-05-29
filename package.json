@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "serve fast videos on mobile apps",
   "main": "index.js",
+  
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
@@ -15,6 +16,7 @@
     "@azure/arm-storage": "^18.2.0",
     "@azure/identity": "^4.0.1",
     "@azure/storage-blob": "^12.17.0",
+    "@supabase/supabase-js": "^2.43.4",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
