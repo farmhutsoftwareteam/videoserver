@@ -62,7 +62,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/api", paynow); // Add the payment routes
 
 app.get("/", (req, res) => {
-  res.send("Video server is up and running on pipelinez! new video farmat with supabase now");
+  res.send("Video server is up and running on pipelinez! new video farmat with supabase now and new multer stuff");
 });
 
 app.listen(PORT, () => {
