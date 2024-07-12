@@ -1,94 +1,35 @@
-require("dotenv").config();
-const express = require("express");
+const express = require('express');
+const multer = require('multer');
+const { BlobServiceClient } = require('@azure/storage-blob');
+const fs = require('fs');
+const path = require('path');
+
 const router = express.Router();
-const multer = require("multer");
-const supabase = require('../lib/supabase.js');
-const { BlobServiceClient } = require("@azure/storage-blob");
+const upload = multer({ dest: 'uploads/' });
 
-const Video = require("../models/videoModel.js"); // Adjust the path as per your file structure
+const blobServiceClient = new BlobServiceClient(
+  'https://heartandsoulstorage.blob.core.windows.net?sv=2022-11-02&ss=bfqt&srt=o&sp=rwdlacupiytfx&se=2025-12-07T17:17:30Z&st=2024-07-12T09:17:30Z&spr=https&sig=mj188XaUBx9L3Qfw6xOpaSfBhdDrbygW%2F3ZU5P41Xbk%3D'
+);
+const containerClient1 = blobServiceClient.getContainerClient('thumbnails');
+const containerClient2 = blobServiceClient.getContainerClient('videos');
 
-const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
-
-const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
-
-// Multer configuration for file uploads using memory storage
-const upload = multer({
-  storage: multer.memoryStorage(), // Use memory storage for faster uploads
-  limits: { fileSize: 500 * 1024 * 1024 }, // Set appropriate file size limits
-});
-
-// Helper function to upload a file to Azure Blob Storage and return the URL
-async function uploadToAzure(file, containerClient) {
-  const blockBlobClient = containerClient.getBlockBlobClient(file.originalname);
-  
-  console.log(`Uploading ${file.originalname} to container ${containerClient.containerName}...`);
-
+router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    await blockBlobClient.uploadData(file.buffer, {
-      blobHTTPHeaders: { blobContentType: file.mimetype },
-      onProgress: (progress) => {
-        console.log(`Upload progress: ${progress.loadedBytes} bytes`);
-      }
-    });
-  } catch (error) {
-    console.error(`Error during upload: ${error.message}`);
-    throw error;
-  }
+    const file = req.file;
+    console.log('Uploaded file:', file);
 
-  return blockBlobClient.url; // Return the URL of the uploaded blob
-}
+    const container = req.body.container === '2' ? containerClient2 : containerClient1;
+    const blobName = file.filename;
+    const blockBlobClient = container.getBlockBlobClient(blobName);
 
-// Route to upload episode information and video file
-router.post('/upload-episode', upload.fields([
-  { name: "video", maxCount: 1 },
-  { name: "thumbnail", maxCount: 1 },
-]), async (req, res) => {
-  const { title, description, duration, episodenumber, seasonnumber, show } = req.body;
-  const files = req.files;
+    await blockBlobClient.uploadFile(file.path);
+    fs.unlinkSync(path.resolve(file.path)); // Delete file from server after upload
 
-  if (!title || !files.video || !files.thumbnail) {
-    return res.status(400).send('Title, video file, and thumbnail are required.');
-  }
-
-  const videoFile = files.video[0];
-  const thumbnailFile = files.thumbnail[0];
-
-  try {
-    const containerClient = blobServiceClient.getContainerClient("quickstart");
-
-    // Upload video to Azure Blob Storage and get its URL
-    const videoUrl = await uploadToAzure(videoFile, containerClient);
-    console.log('Video uploaded successfully, URL:', videoUrl);
-
-    // Upload thumbnail to Azure Blob Storage and get its URL
-    const thumbnailUrl = await uploadToAzure(thumbnailFile, containerClient);
-    console.log('Thumbnail uploaded successfully, URL:', thumbnailUrl);
-
-    // Insert episode information into Supabase
-    const { data, error } = await supabase
-      .from('episodes')
-      .insert([
-        {
-          title,
-          description,
-          duration,
-          episodenumber,
-          seasonnumber,
-          show,
-          thumbnail: thumbnailUrl,
-          video_url: videoUrl,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-    if (error) {
-      throw error;
-    }
-
-    res.status(201).json({ message: 'Episode uploaded successfully', episode: data });
-  } catch (error) {
-    console.error('Error uploading episode:', error.message);
-    res.status(500).send('Error uploading episode.');
+    const fileURL = blockBlobClient.url; // Get the file URL
+    res.status(200).json({ message: 'File uploaded successfully', url: fileURL });
+  } catch (uploadError) {
+    console.error('Error uploading file to Azure:', uploadError);
+    res.status(500).json({ error: 'Error uploading file to Azure', details: uploadError.message });
   }
 });
 
