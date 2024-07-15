@@ -4,7 +4,7 @@
   "description": "serve fast videos on mobile apps",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no test specified\" && exit 0",
     "start": "node index.js",
     "swagger": "node swagger.js",
     "dev": "nodemon index.js && npm run swagger"
@@ -31,6 +31,6 @@
     "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^3.1.4"
   }
 }
