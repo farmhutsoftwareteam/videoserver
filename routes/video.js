@@ -1,39 +1,45 @@
+require('dotenv').config();
 const express = require('express');
-const Busboy = require('busboy');
+const multer = require('multer');
 const { BlobServiceClient } = require('@azure/storage-blob');
-const stream = require('stream');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
+const upload = multer({ dest: 'uploads/' });
 
-const blobServiceClient = new BlobServiceClient(
-  'https://hstv.blob.core.windows.net?sv=2022-11-02&ss=bfqt&srt=o&sp=rwdlacupiytfx&se=2025-12-07T17:17:30Z&st=2024-07-12T09:17:30Z&spr=https&sig=mj188XaUBx9L3Qfw6xOpaSfBhdDrbygW%2F3ZU5P41Xbk%3D'
-);
+const blobServiceClient = new BlobServiceClient(process.env.AZURE_STORAGE_SAS_URL);
 const containerClient1 = blobServiceClient.getContainerClient('thumbnails');
 const containerClient2 = blobServiceClient.getContainerClient('videos');
 
-router.post('/upload', (req, res) => {
-  const busboy = new Busboy({ headers: req.headers });
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
 
-  busboy.on('file', (fieldname, file, filename, encoding, mimetype) => {
+    console.log('Uploaded file:', file);
+
     const container = req.body.container === '2' ? containerClient2 : containerClient1;
-    const blockBlobClient = container.getBlockBlobClient(filename);
+    const blobName = file.originalname; // Use the original file name
+    const blockBlobClient = container.getBlockBlobClient(blobName);
 
-    const uploadStream = blockBlobClient.createWriteStream({
-      blobHTTPHeaders: { blobContentType: mimetype }
-    });
+    // Upload file to Azure Blob Storage
+    await blockBlobClient.uploadFile(file.path);
 
-    file.pipe(uploadStream);
+    // Delete file from the server after upload
+    fs.unlinkSync(path.resolve(file.path));
 
-    uploadStream.on('finish', () => {
-      res.status(200).json({ message: 'File uploaded successfully', url: blockBlobClient.url });
-    });
+    // Construct the actual file URL
+    const containerBaseUrl = container.url.split('?')[0]; // Get the base URL without SAS token
+    const fileURL = `${containerBaseUrl}/${blobName}`;
 
-    uploadStream.on('error', (err) => {
-      res.status(500).json({ error: 'Error uploading file to Azure', details: err.message });
-    });
-  });
-
-  req.pipe(busboy);
+    res.status(200).json({ message: 'File uploaded successfully', url: fileURL });
+  } catch (uploadError) {
+    console.error('Error uploading file to Azure:', uploadError);
+    res.status(500).json({ error: 'Error uploading file to Azure', details: uploadError.message });
+  }
 });
 
 module.exports = router;

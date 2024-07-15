@@ -16,7 +16,7 @@ app.use(express.json());
 // MongoDB connection URL
 const dbURI = process.env.MONGO_DB_URI;
 
-// Connect to MongoDB
+// Connect to MongoD
 mongoose
   .connect(dbURI)
   .then(() => console.log("Connected to MongoDB"))

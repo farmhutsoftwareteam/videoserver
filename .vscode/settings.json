@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/3951c2b1-c840-4c53-a7d5-140bc490c3a0/resourceGroups/hstvstorage/providers/Microsoft.Web/sites/hstvserver",
+    "appService.deploySubpath": "."
+}
