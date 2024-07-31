@@ -8,43 +8,29 @@ const userRoutes = require("./routes/user.js");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./swagger-output.json");
 const cors = require("cors");
-const { BlobServiceClient } = require("@azure/storage-blob");
+//const { BlobServiceClient } = require("@azure/storage-blob");
 
-// Define CORS options
-const corsOptions = {
-  origin: 'https://videoadminclientside.vercel.app',
-  optionsSuccessStatus: 200,
-};
+
 
 // Apply CORS options
-app.use(cors(corsOptions));
-console.log("CORS middleware applied with options:", corsOptions);
+app.use(cors());
 
-app.use(express.json());
+
+app.use(express());
 
 // MongoDB connection URL
-const dbURI = process.env.MONGO_DB_URI;
-
+const dbURI = 'mongodb+srv://raysuncapital:ZGJKTn45yyqH6X1y@cluster0.0jein5m.mongodb.net/videoserver';
+console.log(dbURI)
 // Connect to MongoDB
 mongoose
-  .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(dbURI, {})
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("Could not connect to MongoDB:", err));
 
-// Explicitly add CORS headers for specific routes
-app.use("/api/videos", (req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://videoadminclientside.vercel.app");
-  res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  next();
-}, videoRoutes);
 
-app.use("/api/users", (req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://videoadminclientside.vercel.app");
-  res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  next();
-}, userRoutes);
+app.use("/api/videos", videoRoutes);
+
+app.use("/api/users", userRoutes);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 

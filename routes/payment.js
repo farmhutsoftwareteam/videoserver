@@ -3,7 +3,7 @@ const router = express.Router();
 const { Paynow } = require('paynow');
 
 // Initialize Paynow
-const paynow = new Paynow('12646', '85bfcc5f-ae61-4777-b51d-6bedacefa2c1');
+const paynow = new Paynow('15556', '88dc1eb2-8ea3-4f7a-9e41-e7c20edaef28');
 
 // Payment processing function
 async function processPayment(amount, phone, email, userId, host) {
