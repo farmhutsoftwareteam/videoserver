@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const User = require('../models/userModel');  // Adjust the path to where your User model is located
+const User = require('../models/userModel');  
 const jwt = require('jsonwebtoken');
 
 
@@ -90,3 +90,4 @@ const getAllUsers = async (req, res) => {
 router.get('/all', getAllUsers);
 
 module.exports = router;
+

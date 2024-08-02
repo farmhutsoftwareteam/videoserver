@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { Paynow } = require('paynow');
+const supabase = require('../supabaseClient');
 
-// Initialize Paynow
+// Initialize Paynow with environment variables
 const paynow = new Paynow('15556', '88dc1eb2-8ea3-4f7a-9e41-e7c20edaef28');
 
 // Payment processing function
@@ -30,6 +31,21 @@ async function processPayment(amount, phone, email, userId, host) {
             // Check payment status
             const status = await paynow.pollTransaction(response.pollUrl);
             console.log('Payment status:', status);
+
+            if (status.paid) {
+                // Update user's subscription status in Supabase
+                const { data, error } = await supabase
+                    .from('profiles') // Your table name is 'profiles'
+                    .update({ isSubscribed: true })
+                    .eq('id', userId); // Assuming 'id' is the primary key
+
+                if (error) {
+                    console.error('Error updating user subscription:', error);
+                    throw error;
+                }
+                console.log('User subscription updated successfully.');
+            }
+
             return status;
         } else {
             console.error('Payment initiation failed:', response.error);

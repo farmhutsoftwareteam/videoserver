@@ -1,8 +1,9 @@
 require('dotenv').config();
 const express = require('express');
-const { BlobServiceClient, BlockBlobClient } = require('@azure/storage-blob');
+const { BlobServiceClient, StorageSharedKeyCredential } = require('@azure/storage-blob');
 const multer = require('multer');
-const stream = require('stream');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
 
@@ -13,9 +14,22 @@ const blobServiceClient = new BlobServiceClient(sas_url);
 const containerClient1 = blobServiceClient.getContainerClient('thumbnails');
 const containerClient2 = blobServiceClient.getContainerClient('videos');
 
-// Custom storage engine for Multer
-const azureStorage = multer.memoryStorage();
-const upload = multer({ storage: azureStorage });
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads'); // Adjusted to the parent directory
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Multer configuration to store file temporarily on disk
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
 
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
@@ -30,18 +44,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const blobName = file.originalname; // Use the original file name
     const blockBlobClient = container.getBlockBlobClient(blobName);
 
-    // Create a stream from the file buffer
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(file.buffer);
+    // Stream file from disk to Azure Blob Storage
+    const filePath = path.join(uploadsDir, file.filename); // Ensure the correct path
+    const fileStream = fs.createReadStream(filePath);
 
-    // Optimize upload using parallel uploads
     const uploadOptions = {
       bufferSize: 8 * 1024 * 1024, // 8MB buffer size
       maxBuffers: 50 // 50 parallel uploads
     };
 
-    // Upload stream to Azure Blob Storage with parallel upload options
-    await blockBlobClient.uploadStream(bufferStream, uploadOptions.bufferSize, uploadOptions.maxBuffers);
+    await blockBlobClient.uploadStream(fileStream, uploadOptions.bufferSize, uploadOptions.maxBuffers);
+
+    // Clean up the file from the disk
+    fs.unlinkSync(filePath);
 
     // Construct the actual file URL
     const containerBaseUrl = container.url.split('?')[0]; // Get the base URL without SAS token
@@ -55,4 +70,3 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 module.exports = router;
-
