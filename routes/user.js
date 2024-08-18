@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const User = require('../models/userModel');  // Adjust the path to where your User model is located
+const User = require('../models/userModel');  
 const jwt = require('jsonwebtoken');
 
 
@@ -76,4 +76,18 @@ router.delete('/:userId', async (req, res) => {
     }
 });
 
+// Function to fetch all users
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find();
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching users', error: error.message });
+    }
+};
+
+// GET route to fetch all users
+router.get('/all', getAllUsers);
+
 module.exports = router;
+
