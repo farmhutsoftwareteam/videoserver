@@ -1,71 +1,70 @@
 const express = require("express");
-const multer = require("multer");
-const { ContainerClient } = require("@azure/storage-blob");
-const stream = require('stream');
-const { promisify } = require('util');
+const { BlobServiceClient, BaseRequestPolicy, newPipeline, StorageSharedKeyCredential, BlobSASPermissions } = require("@azure/storage-blob");
 
 const app = express();
-const CHUNK_SIZE = 8 * 1024 * 1024; // 8MB
 
-const sas_url = 'https://hstvstuff.blob.core.windows.net/?sv=2022-11-02&ss=b&srt=sco&sp=rwdlaciytfx&se=2025-05-01T16:47:59Z&st=2024-07-31T08:47:59Z&spr=https,http&sig=WxcMMIafo8noK7hG5tt2IEDYayrOUDVf%2FfBT0QQCTBU%3D';
+class RequestIDPolicyFactory {
+    prefix;
+    constructor(prefix) {
+      this.prefix = prefix;
+    }
+  
+    create(nextPolicy, options) {
+      return new RequestIDPolicy(nextPolicy, options, this.prefix);
+    }
+  }
+  
+  class RequestIDPolicy extends BaseRequestPolicy {
+    prefix;
+    constructor(nextPolicy, options, prefix) {
+      super(nextPolicy, options);
+      this.prefix = prefix;
+    }
+  
+    async sendRequest(request) {
 
-const storage = multer.memoryStorage();
-const upload = multer({ storage });
+      request.headers.set(
+        'x-ms-date', new Date().toUTCString()
+      );
+
+      request.headers.set('x-ms-version', '2021-04-10')
+  
+      const response = await this._nextPolicy.sendRequest(request);
+  
+      return response;
+    }
+  }
 
 // To parse json request body
 
-
-async function uploadChunk(blockBlobClient, chunk, index) {
-    const blockId = Buffer.from(String(index).padStart(6, '0')).toString('base64');
-    const chunkStream = new stream.PassThrough();
-    chunkStream.end(chunk);
-
-    const options = {
-        headers: {
-            'x-ms-date': new Date().toUTCString(),
-            'x-ms-version': '2021-04-10' // Corrected version
-        }
-    };
-
-    await blockBlobClient.stageBlock(blockId, chunkStream, chunk.length, options);
-    return blockId;
-}
-
-async function commitBlockList(blockBlobClient, blockIds) {
-    const options = {
-        headers: {
-            'x-ms-date': new Date().toUTCString(),
-            'x-ms-version': '2021-04-10' // Corrected version
-        }
-    };
-
-    await blockBlobClient.commitBlockList(blockIds.map(id => id), options);
-}
-
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/upload', async (req, res) => {
     try {
-        const file = req.file;
-        if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+        const fileName = req.body.fileName;
+        if (!fileName) {
+            return res.status(400).json({ error: 'Please specify a file name!' });
         }
 
         const container = req.body.container === '2' ? 'videos' : 'thumbnails';
-        const blobName = file.originalname;
+        const storageAccountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
 
-        // Construct the container URL dynamically
-        const containerUrl = `https://hstvstuff.blob.core.windows.net/${container}?${sas_url.split('?')[1]}`;
-        const containerClient = new ContainerClient(containerUrl);
-        const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+        const sharedKeyCredential = new StorageSharedKeyCredential(storageAccountName, process.env.AZURE_STORAGE_ACCOUNT_KEY)
 
-        const chunks = [];
-        for (let i = 0; i < file.buffer.length; i += CHUNK_SIZE) {
-            chunks.push(file.buffer.slice(i, i + CHUNK_SIZE));
-        }
+        const pipeline = newPipeline(sharedKeyCredential)
 
-        const blockIds = await Promise.all(chunks.map((chunk, index) => uploadChunk(blockBlobClient, chunk, index)));
-        await commitBlockList(blockBlobClient, blockIds);
+        pipeline.factories.unshift(new RequestIDPolicyFactory('Prefix'))
 
-        res.status(200).json({ message: 'File uploaded successfully', url: blockBlobClient.url });
+        const blobServiceClient = new BlobServiceClient(
+            `https://${storageAccountName}.blob.core.windows.net`, pipeline)
+
+        const containerClient = blobServiceClient.getContainerClient(container);
+        const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+
+        const expiresOnDate = new Date();
+        expiresOnDate.setMinutes(expiresOnDate.getMinutes() + 60); // 1 hour
+
+        const sasUrl = await blockBlobClient.generateSasUrl({permissions: BlobSASPermissions.parse('rw'), expiresOn: expiresOnDate, version: '2021-04-10' })
+
+        res.status(200).json({ url: sasUrl });
     } catch (error) {
         console.error('Error uploading file to Azure:', error);
         res.status(500).json({ error: 'Error uploading file to Azure', details: error.message });

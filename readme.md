@@ -11,13 +11,14 @@ This Video Server application is designed to facilitate the storage and retrieva
 
 ## Getting Started
 
-To get started with this application, you will need to set up MongoDB and Azure Blob Storage. Follow the steps below to configure your environment.
+To get started with this application, you will need to set up MongoDB, Azure Blob Storage, and Supabase. Follow the steps below to configure your environment.
 
 ### Prerequisites
 
 - Node.js installed on your machine.
 - An Azure account with an active subscription.
 - A MongoDB database.
+- Docker
 
 ### Setting Up MongoDB
 
@@ -37,7 +38,7 @@ To get started with this application, you will need to set up MongoDB and Azure 
 
    AZURE_STORAGE_ACCOUNT_NAME='your_storage_account_name_here'
 
-   AZURE_STORAGE_CONNECTION_STRING='your_storage_connection_string_here'
+   AZURE_STORAGE_ACCOUNT_KEY='your_storage_account_key_here'
 
 
 ### Environment Variables
@@ -54,6 +55,11 @@ cp .env.example .env
 
 
    npm install
+
+3. Initialize Supabase
+
+    npx supabse init
+    npx supabase start
 
 2. Start the server:
  
