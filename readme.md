@@ -38,7 +38,7 @@ To get started with this application, you will need to set up MongoDB, Azure Blo
 
    AZURE_STORAGE_ACCOUNT_NAME='your_storage_account_name_here'
 
-   AZURE_STORAGE_CONNECTION_STRING='your_storage_connection_string_here'
+   AZURE_STORAGE_ACCOUNT_KEY='your_storage_account_key_here'
 
 
 ### Environment Variables
