@@ -39,6 +39,7 @@ class RequestIDPolicyFactory {
 
 app.post('/upload', async (req, res) => {
     try {
+        console.log('Running new version...')
         const fileName = req.body.fileName;
         if (!fileName) {
             return res.status(400).json({ error: 'Please specify a file name!' });
