@@ -39,7 +39,6 @@ class RequestIDPolicyFactory {
 
 app.post('/upload', async (req, res) => {
     try {
-        console.log('Running new version...')
         const fileName = req.body.fileName;
         if (!fileName) {
             return res.status(400).json({ error: 'Please specify a file name!' });
@@ -65,7 +64,7 @@ app.post('/upload', async (req, res) => {
 
         const sasUrl = await blockBlobClient.generateSasUrl({permissions: BlobSASPermissions.parse('rw'), expiresOn: expiresOnDate, version: '2021-04-10' })
 
-        res.status(200).json({ url: sasUrl });
+        res.status(200).json({ uploadUrl: sasUrl, blobUrl: blockBlobClient.url});
     } catch (error) {
         console.error('Error uploading file to Azure:', error);
         res.status(500).json({ error: 'Error uploading file to Azure', details: error.message });
